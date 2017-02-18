@@ -34,9 +34,21 @@ parse' (_ : s) insts jumps = parse' s insts jumps
 parse :: String -> [Instruction]
 parse s = parse' s [] []
 
+
+data Tape = Tape { left :: [Int], cursor :: Int, right :: [Int] }
+          deriving (Show)
+
+moveRight :: Tape -> Tape
+moveRight (Tape left cursor (next : right)) = (Tape (left ++ [cursor]) next right)
+moveRight (Tape left cursor []) = (Tape (left ++ [cursor]) 0 [])
+
+moveLeft :: Tape -> Tape
+moveLeft (Tape [] cursor right) = (Tape [] 0 (cursor : right))
+moveLeft (Tape left cursor right) = (Tape (init left) (last left) (cursor : right))
+
+
 data State = Init { program :: [Instruction] }
-           | State { tape :: [Int],
-                     dataPointer :: Int,
+           | State { tape :: Tape,
                      program :: [Instruction],
                      instructionPointer :: Int
                    }
@@ -45,20 +57,20 @@ data State = Init { program :: [Instruction] }
            | Terminate deriving (Show)
 
 step :: State -> State
-step (Init program) = State [] 0 program 0
+step (Init program) = State (Tape [] 0 []) program 0
 -- TODO
 
 run :: State -> IO State
 run Terminate = return Terminate
 
 run (Print state) = do
-                    let c = tape state !! dataPointer state
-                    putChar $ chr c
+                    let (Tape _ cursor _) = tape state
+                    putChar $ chr cursor
                     return state
 
 -- TODO
-run (State _ _ _ _) = do
-                        return Terminate
+run (State _ _ _) = do
+                    return Terminate
 
 
 main = do
@@ -67,3 +79,8 @@ main = do
 
   let start = Init $ parse content
   print $ step start
+
+  let tape = Tape [1,2,3] 4 [5,6,7]
+  print $ tape
+  print $ moveRight $ moveRight $ moveRight $ moveRight $ moveRight $ moveRight $ moveRight tape
+  print $ moveLeft $ moveLeft $ moveLeft tape
