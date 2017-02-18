@@ -46,18 +46,42 @@ moveLeft :: Tape -> Tape
 moveLeft (Tape [] cursor right) = (Tape [] 0 (cursor : right))
 moveLeft (Tape left cursor right) = (Tape (init left) (last left) (cursor : right))
 
+inc :: Tape -> Tape
+inc (Tape left cursor right) = (Tape left (cursor + 1) right)
+
+dec :: Tape -> Tape
+dec (Tape left cursor right) = (Tape left (cursor - 1) right)
+
 
 data State = Init { program :: [Instruction] }
-           | State { tape :: Tape,
-                     program :: [Instruction],
-                     instructionPointer :: Int
-                   }
+           | Run { tape :: Tape,
+                   program :: [Instruction],
+                   instructionPointer :: Int
+                 }
            | Print State
            | Read State
            | Terminate deriving (Show)
 
 step :: State -> State
-step (Init program) = State (Tape [] 0 []) program 0
+step (Init program) = Run (Tape [] 0 []) program 0
+step (Run tape program ip) = if ip >= length program
+                               then Terminate
+                               else let instruction = program !! ip in
+                                    case instruction of
+                                       Inc -> Run (inc tape) program (ip + 1)
+                                       Dec -> Run (dec tape) program (ip + 1)
+                                       MoveRight -> Run (moveRight tape) program (ip + 1)
+                                       MoveLeft -> Run (moveLeft tape) program (ip + 1)
+                                       LoopStart end -> let jump = if cursor tape == 0
+                                                                   then end + 1
+                                                                   else ip + 1
+                                                        in Run tape program jump
+                                       LoopEnd start -> let jump = if cursor tape == 0
+                                                                   then ip + 1
+                                                                   else start + 1
+                                                        in Run tape program jump
+                                       _ -> Run tape program (ip + 1)
+
 -- TODO
 
 run :: State -> IO State
@@ -69,7 +93,7 @@ run (Print state) = do
                     return state
 
 -- TODO
-run (State _ _ _) = do
+run (Run _ _ _) = do
                     return Terminate
 
 
@@ -78,9 +102,4 @@ main = do
   content <- readFile $ args !! 0
 
   let start = Init $ parse content
-  print $ step start
-
-  let tape = Tape [1,2,3] 4 [5,6,7]
-  print $ tape
-  print $ moveRight $ moveRight $ moveRight $ moveRight $ moveRight $ moveRight $ moveRight tape
-  print $ moveLeft $ moveLeft $ moveLeft tape
+  mapM print $ take 10 $ iterate step start
