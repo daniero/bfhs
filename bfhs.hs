@@ -20,8 +20,8 @@ parse' ('+' : s) insts jumps = parse' s (insts ++ [Inc]) jumps
 parse' ('-' : s) insts jumps = parse' s (insts ++ [Dec]) jumps
 parse' ('>' : s) insts jumps = parse' s (insts ++ [MoveRight]) jumps
 parse' ('<' : s) insts jumps = parse' s (insts ++ [MoveLeft]) jumps
-parse' ('.' : s) insts jumps = parse' s (insts ++ [Input]) jumps
-parse' (',' : s) insts jumps = parse' s (insts ++ [Output]) jumps
+parse' (',' : s) insts jumps = parse' s (insts ++ [Input]) jumps
+parse' ('.' : s) insts jumps = parse' s (insts ++ [Output]) jumps
 parse' ('[' : s) insts jumps = parse' s (insts ++ [OpenLoop]) (length insts : jumps)
 parse' (']' : s) insts (curr : jumps) = let index = length insts
                                             before = take curr insts
