@@ -1,6 +1,7 @@
 import System.Environment
 import Data.List
 import Data.Char
+import System.IO
 
 data Instruction = Inc
                  | Dec
@@ -35,6 +36,11 @@ parse :: String -> [Instruction]
 parse s = parse' s [] []
 
 
+initState :: [Instruction] -> State
+initState [] = Terminate
+initState program = Run (Tape [] 0 []) program 0
+
+
 data Tape = Tape { left :: [Int], cursor :: Int, right :: [Int] }
           deriving (Show)
 
@@ -53,53 +59,47 @@ dec :: Tape -> Tape
 dec (Tape left cursor right) = (Tape left (cursor - 1) right)
 
 
-data State = Init { program :: [Instruction] }
-           | Run { tape :: Tape,
+data State = Run { tape :: Tape,
                    program :: [Instruction],
-                   instructionPointer :: Int
-                 }
-           | Print State
-           | Read State
+                   instructionPointer :: Int }
            | Terminate deriving (Show)
 
 step :: State -> State
-step (Init program) = Run (Tape [] 0 []) program 0
-step (Run tape program ip) = if ip >= length program
-                               then Terminate
-                               else let instruction = program !! ip in
-                                    case instruction of
-                                       Inc -> Run (inc tape) program (ip + 1)
-                                       Dec -> Run (dec tape) program (ip + 1)
-                                       MoveRight -> Run (moveRight tape) program (ip + 1)
-                                       MoveLeft -> Run (moveLeft tape) program (ip + 1)
-                                       LoopStart end -> let jump = if cursor tape == 0
-                                                                   then end + 1
-                                                                   else ip + 1
-                                                        in Run tape program jump
-                                       LoopEnd start -> let jump = if cursor tape == 0
-                                                                   then ip + 1
-                                                                   else start + 1
-                                                        in Run tape program jump
-                                       _ -> Run tape program (ip + 1)
+step (Run tape program ip) = let instruction = program !! ip in
+                             case instruction of
+                                Inc -> Run (inc tape) program (ip + 1)
+                                Dec -> Run (dec tape) program (ip + 1)
+                                MoveRight -> Run (moveRight tape) program (ip + 1)
+                                MoveLeft -> Run (moveLeft tape) program (ip + 1)
+                                LoopStart end -> let jump = if cursor tape == 0
+                                                            then end + 1
+                                                            else ip + 1
+                                                 in Run tape program jump
+                                LoopEnd start -> let jump = if cursor tape == 0
+                                                            then ip + 1
+                                                            else start + 1
+                                                 in Run tape program jump
+                                _ -> Run tape program (ip + 1)
 
--- TODO
 
 run :: State -> IO State
 run Terminate = return Terminate
-
-run (Print state) = do
-                    let (Tape _ cursor _) = tape state
-                    putChar $ chr cursor
-                    return state
-
--- TODO
-run (Run _ _ _) = do
-                    return Terminate
+run state@(Run tape program ip) = if ip >= length program
+                                  then return Terminate
+                                  else do
+                                    let instruction = program !! ip
+                                        ioState = case instruction of
+                                          Output -> do
+                                                    putChar $ chr $ cursor tape
+                                                    return state
+                                          _ -> return state
+                                    next <- ioState
+                                    run $ step next
 
 
 main = do
   args <- getArgs
   content <- readFile $ args !! 0
 
-  let start = Init $ parse content
-  mapM print $ take 10 $ iterate step start
+  let program = initState $ parse content
+  run program
