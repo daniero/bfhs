@@ -81,6 +81,13 @@ step (Run tape program ip) = let instruction = program !! ip in
                                                  in Run tape program jump
                                 _ -> Run tape program (ip + 1)
 
+getInput :: IO Char
+getInput = do
+           eof <- isEOF
+           if eof
+           then return '\0'
+           else getChar
+
 
 run :: State -> IO State
 run Terminate = return Terminate
@@ -92,6 +99,11 @@ run state@(Run tape program ip) = if ip >= length program
                                           Output -> do
                                                     putChar $ chr $ cursor tape
                                                     return state
+                                          Input -> do
+                                                   input <- getInput
+                                                   let (Tape left _ right) = tape
+                                                       newTape = Tape left (ord input) right
+                                                   return (Run newTape program ip)
                                           _ -> return state
                                     next <- ioState
                                     run $ step next
