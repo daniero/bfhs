@@ -45,12 +45,12 @@ data Tape = Tape { left :: [Int], cursor :: Int, right :: [Int] }
           deriving (Show)
 
 moveRight :: Tape -> Tape
-moveRight (Tape left cursor (next : right)) = (Tape (left ++ [cursor]) next right)
-moveRight (Tape left cursor []) = (Tape (left ++ [cursor]) 0 [])
+moveRight (Tape left cursor (next : right)) = (Tape (cursor : left) next right)
+moveRight (Tape left cursor []) = (Tape (cursor : left) 0 [])
 
 moveLeft :: Tape -> Tape
 moveLeft (Tape [] cursor right) = (Tape [] 0 (cursor : right))
-moveLeft (Tape left cursor right) = (Tape (init left) (last left) (cursor : right))
+moveLeft (Tape (next : left) cursor right) = (Tape  left next (cursor : right))
 
 inc :: Tape -> Tape
 inc (Tape left cursor right) = (Tape left (cursor + 1) right)
